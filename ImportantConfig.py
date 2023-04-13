@@ -13,8 +13,8 @@
 # under the License.
 class Config:
     def __init__(self,):
-        self.sytheticDir = "JOB-job_extended_queries/"  #"sytheticQueries/"
-        self.JOBDir = "JOB-job_extended_queries/"
+        self.sytheticDir = "job_extended_queries/"  #"sytheticQueries/"
+        self.JOBDir = "job_extended_queries/"
         self.rootPool = "meanPool"
         self.schemaFile = "schema.sql"
         self.dbName = "imdbload"

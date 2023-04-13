@@ -43,7 +43,7 @@ featureSize = 128
 
 policy_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 40*41,device=device).to(device)
 target_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 40*41,device=device).to(device)
-policy_net.load_state_dict(torch.load("saved_model/CostTraining.pth"))
+policy_net.load_state_dict(torch.load("/home/said/Desktop/projects/RTOS/CostTraining0.pth"))
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
@@ -53,7 +53,7 @@ if __name__=='__main__':
 
 
         # Set the path to the directory containing the files
-        directory_path = "JOB-queries"
+        directory_path = "workload/JOB-queries"
         elements = ['3b.sql', '1a.sql', '32a.sql', '8a.sql', '7a.sql', '25a.sql', '19a.sql', '22a.sql', '24a.sql', '28a.sql', '29b.sql']
 
         # Loop over all the files in the directory
