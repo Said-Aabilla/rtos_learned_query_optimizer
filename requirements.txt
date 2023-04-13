@@ -1,0 +1,8 @@
+et-xmlfile==1.1.0
+numpy==1.21.6
+openpyxl==3.1.2
+psqlparse==1.0rc7
+six==1.16.0
+torch==1.13.1
+typing-extensions==4.5.0
+psycopg2-binary
