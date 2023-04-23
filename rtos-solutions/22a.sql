@@ -1,51 +1,31 @@
-/*+
-Leading(((((((((((it1 mi) mk) k) t) mc) mi_idx) kt) ct) it2) cn))
-*/
-SELECT MIN(cn.name) AS movie_company,
-       MIN(mi_idx.info) AS rating,
-       MIN(t.title) AS western_violent_movie
-FROM company_name AS cn,
-     company_type AS ct,
-     info_type AS it1,
-     info_type AS it2,
-     keyword AS k,
-     kind_type AS kt,
-     movie_companies AS mc,
-     movie_info AS mi,
-     movie_info_idx AS mi_idx,
-     movie_keyword AS mk,
-     title AS t
-WHERE cn.country_code != '[us]'
-  AND it1.info = 'countries'
-  AND it2.info = 'rating'
-  AND k.keyword IN ('murder',
-                    'murder-in-title',
-                    'blood',
-                    'violence')
-  AND kt.kind IN ('movie',
-                  'episode')
-  AND mc.note NOT LIKE '%(USA)%'
-  AND mc.note LIKE '%(200%)%'
-  AND mi.info IN ('Germany',
-                  'German',
-                  'USA',
-                  'American')
-  AND mi_idx.info < '7.0'
-  AND t.production_year > 2008
-  AND kt.id = t.kind_id
-  AND t.id = mi.movie_id
-  AND t.id = mk.movie_id
-  AND t.id = mi_idx.movie_id
-  AND t.id = mc.movie_id
-  AND mk.movie_id = mi.movie_id
-  AND mk.movie_id = mi_idx.movie_id
-  AND mk.movie_id = mc.movie_id
-  AND mi.movie_id = mi_idx.movie_id
-  AND mi.movie_id = mc.movie_id
-  AND mc.movie_id = mi_idx.movie_id
-  AND k.id = mk.keyword_id
-  AND it1.id = mi.info_type_id
-  AND it2.id = mi_idx.info_type_id
-  AND ct.id = mc.company_type_id
-  AND cn.id = mc.company_id;
-
+select min(cn.name) AS movie_company,
+min(mi_idx.info) AS rating,
+min(t.title) AS western_violent_movie
+from info_type AS it1
+inner join movie_info AS mi
+on it1.id = mi.info_type_id AND it1.info = 'countries' AND mi.info IN ('Germany',
+'German',
+'USA',
+'American')
+inner join movie_keyword AS mk
+on mk.movie_id = mi.movie_id
+inner join keyword AS k
+on k.id = mk.keyword_id AND k.keyword IN ('murder',
+'murder-in-title',
+'blood',
+'violence')
+inner join title AS t
+on t.id = mk.movie_id AND t.id = mi.movie_id AND t.production_year > 2008
+inner join movie_companies AS mc
+on t.id = mc.movie_id AND mk.movie_id = mc.movie_id AND mi.movie_id = mc.movie_id AND mc.note not like '%(USA)%' AND mc.note like '%(200%)%'
+inner join movie_info_idx AS mi_idx
+on t.id = mi_idx.movie_id AND mc.movie_id = mi_idx.movie_id AND mk.movie_id = mi_idx.movie_id AND mi.movie_id = mi_idx.movie_id AND mi_idx.info < '7.0'
+inner join kind_type AS kt
+on kt.id = t.kind_id AND kt.kind IN ('movie',
+'episode')
+inner join company_type AS ct
+on ct.id = mc.company_type_id
+inner join info_type AS it2
+on it2.id = mi_idx.info_type_id AND it2.info = 'rating'
+inner join company_name AS cn
+on cn.id = mc.company_id AND cn.country_code <> '[us]';

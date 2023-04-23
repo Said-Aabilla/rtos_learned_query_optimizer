@@ -1,45 +1,24 @@
-/*+
-Leading((((((((((an n) ci) chn) mi) t) mc) cn) it) rt))
-*/
-SELECT MIN(n.name) AS voicing_actress,
-       MIN(t.title) AS voiced_movie
-FROM aka_name AS an,
-     char_name AS chn,
-     cast_info AS ci,
-     company_name AS cn,
-     info_type AS it,
-     movie_companies AS mc,
-     movie_info AS mi,
-     name AS n,
-     role_type AS rt,
-     title AS t
-WHERE ci.note IN ('(voice)',
-                  '(voice: Japanese version)',
-                  '(voice) (uncredited)',
-                  '(voice: English version)')
-  AND cn.country_code ='[us]'
-  AND it.info = 'release dates'
-  AND mc.note IS NOT NULL
-  AND (mc.note LIKE '%(USA)%'
-       OR mc.note LIKE '%(worldwide)%')
-  AND mi.info IS NOT NULL
-  AND (mi.info LIKE 'Japan:%200%'
-       OR mi.info LIKE 'USA:%200%')
-  AND n.gender ='f'
-  AND n.name LIKE '%Ang%'
-  AND rt.role ='actress'
-  AND t.production_year BETWEEN 2005 AND 2009
-  AND t.id = mi.movie_id
-  AND t.id = mc.movie_id
-  AND t.id = ci.movie_id
-  AND mc.movie_id = ci.movie_id
-  AND mc.movie_id = mi.movie_id
-  AND mi.movie_id = ci.movie_id
-  AND cn.id = mc.company_id
-  AND it.id = mi.info_type_id
-  AND n.id = ci.person_id
-  AND rt.id = ci.role_id
-  AND n.id = an.person_id
-  AND ci.person_id = an.person_id
-  AND chn.id = ci.person_role_id;
-
+select min(n.name) AS voicing_actress,
+min(t.title) AS voiced_movie
+from aka_name AS an
+inner join name AS n
+on n.id = an.person_id AND n.gender = 'f' AND n.name like '%Ang%'
+inner join cast_info AS ci
+on n.id = ci.person_id AND ci.person_id = an.person_id AND ci.note IN ('(voice)',
+'(voice: Japanese version)',
+'(voice) (uncredited)',
+'(voice: English version)')
+inner join char_name AS chn
+on chn.id = ci.person_role_id
+inner join movie_info AS mi
+on mi.movie_id = ci.movie_id AND mi.info IS NOT NULL AND ( mi.info like 'Japan:%200%' OR mi.info like 'USA:%200%')
+inner join title AS t
+on t.id = mi.movie_id AND t.id = ci.movie_id AND t.production_year BETWEEN 2005 AND 2009
+inner join movie_companies AS mc
+on mc.movie_id = ci.movie_id AND t.id = mc.movie_id AND mc.movie_id = mi.movie_id AND mc.note IS NOT NULL AND ( mc.note like '%(USA)%' OR mc.note like '%(worldwide)%')
+inner join company_name AS cn
+on cn.id = mc.company_id AND cn.country_code = '[us]'
+inner join info_type AS it
+on it.id = mi.info_type_id AND it.info = 'release dates'
+inner join role_type AS rt
+on rt.id = ci.role_id AND rt.role = 'actress';

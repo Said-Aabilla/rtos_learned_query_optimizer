@@ -38,8 +38,8 @@ db_info = DB(createSchema)
 
 featureSize = 128
 
-policy_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=40 * 41, device=device).to(device)
-target_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=40 * 41, device=device).to(device)
+policy_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=1628, device=device).to(device)
+target_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=1628, device=device).to(device)
 
 for name, param in policy_net.named_parameters():
     print(name, param.shape)
@@ -259,7 +259,7 @@ def train(trainSet, validateSet):
             target_net.load_state_dict(policy_net.state_dict())
         if i_episode % save_every == 0:
             torch.save(policy_net.cpu().state_dict(), 'CostTraining' + str(i_episode) + '.pth')
-    torch.save(policy_net.cpu().state_dict(), 'saved_model/CostTraining.pth')
+    torch.save(policy_net.cpu().state_dict(), 'saved_model/job_cost_trained.pth')
     # policy_net = policy_net.cuda()
 
 

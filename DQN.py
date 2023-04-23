@@ -116,7 +116,7 @@ class ENV(object):
                 val1 = self.sel.plan2Cost()
                 val2 = self.sel.sqlt.getDPlantecy()
                 print("rtos cost" ,val1)
-                self.create_file("rtos-solutions/", filename, sql)
+                # self.create_file("rtos-solutions/", filename, sql)
 
                 return val1/val2, True
             else:

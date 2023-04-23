@@ -53,7 +53,7 @@ if __name__=='__main__':
 
 
         # Set the path to the directory containing the files
-        directory_path = "workload/JOB-queries"
+        directory_path = "workload/job-queries"
         elements = ['3b.sql', '1a.sql', '32a.sql', '8a.sql', '7a.sql', '25a.sql', '19a.sql', '22a.sql', '24a.sql', '28a.sql', '29b.sql']
 
         # Loop over all the files in the directory

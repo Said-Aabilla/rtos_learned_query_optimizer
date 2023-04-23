@@ -13,9 +13,11 @@
 # under the License.
 
 import sys
+
 sys.path.append(".")
 
-from JOBParser import TargetTable,FromTable,Comparison
+from JOBParser import TargetTable, FromTable, Comparison
+
 max_column_in_table = 15
 import torch
 import torch
@@ -28,110 +30,113 @@ from ImportantConfig import Config
 
 config = Config()
 
-device = torch.device("cuda" if torch.cuda.is_available() and config.usegpu==1 else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() and config.usegpu == 1 else "cpu")
+
 
 class BaselineAlias:
-    def __init__(self,rows00,alias):
+    def __init__(self, rows00, alias):
         self.rows00 = rows00
         self.alias = alias
         self.result_order = []
         self.joinedset = set()
         self.left_deep = True
-        if rows00[0][0][0]['Plan']['Total Cost']>1:
-            self.getBaseline(rows00[0][0][0]['Plan'],alias)
+        if rows00[0][0][0]['Plan']['Total Cost'] > 1:
+            self.getBaseline(rows00[0][0][0]['Plan'], alias)
         else:
             alist = list(self.alias)
-            for x in range(1,len(self.alias)):
-                self.result_order.append((alist[0],alist[x]))
+            for x in range(1, len(self.alias)):
+                self.result_order.append((alist[0], alist[x]))
         # print(rows00[0][0][0])
         if self.left_deep:
-            if len(self.result_order)!=len(self.alias)-1:
-                print("wrong number of order",self.result_order)
+            if len(self.result_order) != len(self.alias) - 1:
+                print("wrong number of order", self.result_order)
                 while (1):
                     pass
-    def hashAdd(self,x):
-        if x.find(' AND ')>-1:
+
+    def hashAdd(self, x):
+        if x.find(' AND ') > -1:
             y = x.split(' AND ')
             self.hashAdd(y[0][1:])
             self.hashAdd(y[1][0:])
         else:
             thisTime = []
             for y in self.alias:
-                if x.find('('+y+'.')>-1 and x.find('('+y+'.')<2:
+                if x.find('(' + y + '.') > -1 and x.find('(' + y + '.') < 2:
                     thisTime.append(y)
-            
+
             for y in self.alias:
-                if x.find(' '+y+'.')>-1 and x.find(' '+y+'.')>2:
+                if x.find(' ' + y + '.') > -1 and x.find(' ' + y + '.') > 2:
                     thisTime.append(y)
-            
-            if len(thisTime)!=2:
+
+            if len(thisTime) != 2:
                 print(thisTime)
                 print('wroing Hash')
                 while (1):
                     pass
-            if len(self.joinedset)!=0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
+            if len(self.joinedset) != 0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
                 self.left_deep = False
             if not (thisTime[0] in self.joinedset and thisTime[1] in self.joinedset):
                 if thisTime[0] in self.joinedset:
                     self.result_order.append(thisTime)
                 else:
-                    self.result_order.append([thisTime[1],thisTime[0]])
+                    self.result_order.append([thisTime[1], thisTime[0]])
                 self.joinedset.add(thisTime[0])
                 self.joinedset.add(thisTime[1])
-        
-    def getBaseline(self,rows00,alias):
+
+    def getBaseline(self, rows00, alias):
         import json
         # print(json.dumps(rows00))
         # print("------")
         if 'Plans' in rows00:
             for x in rows00['Plans']:
-                self.getBaseline(x,alias)
-        if 'Recheck Cond' in rows00 and 'Alias' in rows00 and rows00['Recheck Cond'].find(" = ")!=-1:
+                self.getBaseline(x, alias)
+        if 'Recheck Cond' in rows00 and 'Alias' in rows00 and rows00['Recheck Cond'].find(" = ") != -1:
             thisTime = [rows00['Alias']]
             if rows00['Recheck Cond']:
                 for y in self.alias:
-                    if rows00['Recheck Cond'].find('(' +y+'.')!=-1 or rows00['Recheck Cond'].find(' ' +y+'.')!=-1:
+                    if rows00['Recheck Cond'].find('(' + y + '.') != -1 or rows00['Recheck Cond'].find(
+                            ' ' + y + '.') != -1:
                         thisTime.append(y)
-            if len(self.joinedset)!=0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
+            if len(self.joinedset) != 0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
                 self.left_deep = False
-            if len(thisTime)!=2:
-                return 
+            if len(thisTime) != 2:
+                return
                 print('wrong recheck')
                 while (1):
                     pass
             if not (thisTime[0] in self.joinedset and thisTime[1] in self.joinedset):
-                if len(self.joinedset)!=0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
+                if len(self.joinedset) != 0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
                     self.left_deep = False
                 if thisTime[0] in self.joinedset:
                     self.result_order.append(thisTime)
                 else:
-                    self.result_order.append([thisTime[1],thisTime[0]])
+                    self.result_order.append([thisTime[1], thisTime[0]])
                 self.joinedset.add(thisTime[0])
                 self.joinedset.add(thisTime[1])
-        if 'Index Cond' in rows00 and 'Alias' in rows00 and rows00['Index Cond'].find(" = ")!=-1:
+        if 'Index Cond' in rows00 and 'Alias' in rows00 and rows00['Index Cond'].find(" = ") != -1:
             # print(rows00['Index Cond'].find(" = ")!='-1')
             thisTime = [rows00['Alias']]
             if rows00['Index Cond']:
                 for y in self.alias:
-                    if rows00['Index Cond'].find('(' +y+'.')!=-1 or rows00['Index Cond'].find(' ' +y+'.')!=-1:
+                    if rows00['Index Cond'].find('(' + y + '.') != -1 or rows00['Index Cond'].find(' ' + y + '.') != -1:
                         thisTime.append(y)
 
-            if len(thisTime)!=2:
+            if len(thisTime) != 2:
                 return
                 print(rows00['Index Cond'])
-                print('wroing index',)
+                print('wroing index', )
                 while (1):
                     pass
-            if len(self.joinedset)!=0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
+            if len(self.joinedset) != 0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
                 self.left_deep = False
             if not (thisTime[0] in self.joinedset and thisTime[1] in self.joinedset):
 
-                if len(self.joinedset)!=0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
+                if len(self.joinedset) != 0 and not (thisTime[0] in self.joinedset or thisTime[1] in self.joinedset):
                     self.left_deep = False
                 if thisTime[0] in self.joinedset:
                     self.result_order.append(thisTime)
                 else:
-                    self.result_order.append([thisTime[1],thisTime[0]])
+                    self.result_order.append([thisTime[1], thisTime[0]])
                 self.joinedset.add(thisTime[0])
                 self.joinedset.add(thisTime[1])
         if 'Hash Cond' in rows00:
@@ -147,7 +152,7 @@ class JoinTree:
         from psqlparse import parse_dict
         global tlm
         tlm = {}
-        # print(sqlt.sql)
+        print(sqlt)
         self.sqlt = sqlt
         self.sql = self.sqlt.sql
         # print([self.sql])
@@ -158,8 +163,15 @@ class JoinTree:
             return
         self.aliasname2fullname = {}
         # self.pgrunner = pgRunner
-        self.id2aliasname = {0: 'start', 1: 'chn', 2: 'ci', 3: 'cn', 4: 'ct', 5: 'mc', 6: 'rt', 7: 't', 8: 'k', 9: 'lt', 10: 'mk', 11: 'ml', 12: 'it1', 13: 'it2', 14: 'mi', 15: 'mi_idx', 16: 'it', 17: 'kt', 18: 'miidx', 19: 'at', 20: 'an', 21: 'n', 22: 'cc', 23: 'cct1', 24: 'cct2', 25: 'it3', 26: 'pi', 27: 't1', 28: 't2', 29: 'cn1', 30: 'cn2', 31: 'kt1', 32: 'kt2', 33: 'mc1', 34: 'mc2', 35: 'mi_idx1', 36: 'mi_idx2', 37: 'an1', 38: 'n1', 39: 'a1'}
-        self.aliasname2id = {'kt1': 31, 'chn': 1, 'cn1': 29, 'mi_idx2': 36, 'cct1': 23, 'n': 21, 'a1': 39, 'kt2': 32, 'miidx': 18, 'it': 16, 'mi_idx1': 35, 'kt': 17, 'lt': 9, 'ci': 2, 't': 7, 'k': 8, 'start': 0, 'ml': 11, 'ct': 4, 't2': 28, 'rt': 6, 'it2': 13, 'an1': 37, 'at': 19, 'mc2': 34, 'pi': 26, 'mc': 5, 'mi_idx': 15, 'n1': 38, 'cn2': 30, 'mi': 14, 'it1': 12, 'cc': 22, 'cct2': 24, 'an': 20, 'mk': 10, 'cn': 3, 'it3': 25, 't1': 27, 'mc1': 33}
+        # self.id2aliasname = {0: 'start', 1: 'chn', 2: 'ci', 3: 'cn', 4: 'ct', 5: 'mc', 6: 'rt', 7: 't', 8: 'k', 9: 'lt', 10: 'mk', 11: 'ml', 12: 'it1', 13: 'it2', 14: 'mi', 15: 'mi_idx', 16: 'it', 17: 'kt', 18: 'miidx', 19: 'at', 20: 'an', 21: 'n', 22: 'cc', 23: 'cct1', 24: 'cct2', 25: 'it3', 26: 'pi', 27: 't1', 28: 't2', 29: 'cn1', 30: 'cn2', 31: 'kt1', 32: 'kt2', 33: 'mc1', 34: 'mc2', 35: 'mi_idx1', 36: 'mi_idx2', 37: 'an1', 38: 'n1', 39: 'a1'}
+        # self.aliasname2id = {'kt1': 31, 'chn': 1, 'cn1': 29, 'mi_idx2': 36, 'cct1': 23, 'n': 21, 'a1': 39, 'kt2': 32, 'miidx': 18, 'it': 16, 'mi_idx1': 35, 'kt': 17, 'lt': 9, 'ci': 2, 't': 7, 'k': 8, 'start': 0, 'ml': 11, 'ct': 4, 't2': 28, 'rt': 6, 'it2': 13, 'an1': 37, 'at': 19, 'mc2': 34, 'pi': 26, 'mc': 5, 'mi_idx': 15, 'n1': 38, 'cn2': 30, 'mi': 14, 'it1': 12, 'cc': 22, 'cct2': 24, 'an': 20, 'mk': 10, 'cn': 3, 'it3': 25, 't1': 27, 'mc1': 33}
+        self.id2aliasname = {0: 'start', 1: 't1', 2: 's1', 3: 'q1', 4: 'a1', 5: 'tq1', 6: 'u1', 7: 't2', 8: 's2',
+                             9: 'q2', 10: 'a2', 11: 'tq2', 12: 'u2', 13: 'c1', 14: 'c2', 15: 't', 16: 's', 17: 'q',
+                             18: 'tq', 19: 'b1', 20: 'b2', 21: 'pl1', 22: 'pl2', 23: 'q3', 24: 'acc', 25: 'pl', 26:'b',27:'u'}
+
+        self.aliasname2id = {'t': 15, 'q': 17, 'pl': 25, 'u1': 6, 's2': 8, 'q2': 9, 's1': 2, 'c1': 13, 'pl1': 21,
+                             't1': 1, 'acc': 24, 'q1': 3, 'a1': 4, 'tq2': 11,'b':26 ,'t2': 7, 'q3': 23, 'u2': 12, 'c2': 14,
+                             'tq1': 5,'start': 0, 'a2': 10, 'pl2': 22, 'b1': 19, 's': 16, 'b2': 20, 'tq': 18, 'u':27}
         self.alias_selectivity = [0]*len(self.id2aliasname)
         # self.device = device
         self.aliasname2fromtable = {}
@@ -195,7 +207,7 @@ class JoinTree:
         for idx in range(max_alias):
             self.join_matrix.append([0]*max_alias)
         if not extent_sql:
-            return 
+            return
         for comparison in self.comparison_list:
             # print(str(comparison),len(comparison.aliasname_list))
             if len(comparison.aliasname_list) == 2:
@@ -249,8 +261,11 @@ class JoinTree:
         #     predice_list_dict[table.name] = [0] * len(table.column2idx)
         table_dict = {}
         for table in self.db_info.tables:
-            table_dict[table.name] = table 
+            table_dict[table.name] = table
+        # print("table_dict",table_dict)
         for alias in self.aliasname2id:
+            # print(alias, table.column2idx)
+            # print("--------------")
             predice_list_dict[alias] = [0] * len(table.column2idx)
         for filter_table in self.filter_list:
             for comparison in self.filter_list[filter_table]:
@@ -271,11 +286,10 @@ class JoinTree:
         import json
         # print(json.dumps(pgRunner.getPlan(self.sql)))
         # print("fck baseline")
-        self.baseline = BaselineAlias(pgrunner.getPlan(self.sql),self.aliasnames)
+        self.baseline = BaselineAlias(pgrunner.getPlan(self.sql), self.aliasnames)
         # print("-----end-----")
 
-
-    def comparisonExpand(self,comparison_list):
+    def comparisonExpand(self, comparison_list):
         join_matrix = {}
         # for idx in range(len(self.db_info)):
         #     join_matrix.append([0]*len(self.db_info))
@@ -291,8 +305,8 @@ class JoinTree:
                 table_idx = right_table_class.column2idx[comparison.column_list[1]]
                 idx0 = self.db_info.name2idx[left_fullname]
                 idx1 = self.db_info.name2idx[right_fullname]
-                join_matrix[(left_aliasname,right_aliasname)] = 1
-                join_matrix[(right_aliasname,left_aliasname)] = 1
+                join_matrix[(left_aliasname, right_aliasname)] = 1
+                join_matrix[(right_aliasname, left_aliasname)] = 1
         Flag = True
         while Flag:
             newList = []
@@ -308,7 +322,7 @@ class JoinTree:
                     idx1l = self.db_info.name2idx[left_fullname1]
                     idx1r = self.db_info.name2idx[right_fullname1]
                     for comparison2 in comparison_list:
-                        if len(comparison2.aliasname_list) == 2 and str(comparison1)!=str(comparison2):
+                        if len(comparison2.aliasname_list) == 2 and str(comparison1) != str(comparison2):
                             left_aliasname2 = comparison2.aliasname_list[0]
                             left_fullname2 = self.aliasname2fullname[left_aliasname2]
                             left_columnname2 = comparison2.column_list[0]
@@ -319,54 +333,55 @@ class JoinTree:
                             idx2r = self.db_info.name2idx[right_fullname2]
                             import copy
                             if left_aliasname1 == left_aliasname2 and left_columnname1 == left_columnname2:
-                                if not (right_aliasname1,right_aliasname2) in join_matrix:
+                                if not (right_aliasname1, right_aliasname2) in join_matrix:
                                     Flag = True
                                     # join_matrix[idx1r][idx2r]=1
                                     ncp = copy.deepcopy(comparison1)
                                     ncp.lexpr = comparison2.rexpr
                                     ncp.column_list[0] = comparison2.column_list[1]
                                     ncp.aliasname_list[0] = comparison2.aliasname_list[1]
-                                    join_matrix[(right_aliasname1,right_aliasname2)] = 1
-                                    join_matrix[(right_aliasname2,right_aliasname1)] = 1
+                                    join_matrix[(right_aliasname1, right_aliasname2)] = 1
+                                    join_matrix[(right_aliasname2, right_aliasname1)] = 1
                                     newList.append(ncp)
                             if left_aliasname1 == right_aliasname2 and left_columnname1 == right_columnname2:
-                                if not (right_aliasname1,left_aliasname2) in join_matrix:
+                                if not (right_aliasname1, left_aliasname2) in join_matrix:
                                     Flag = True
                                     # join_matrix[idx1r][idx2l]=1
                                     ncp = copy.deepcopy(comparison1)
                                     ncp.lexpr = comparison2.lexpr
                                     ncp.column_list[0] = comparison2.column_list[0]
                                     ncp.aliasname_list[0] = comparison2.aliasname_list[0]
-                                    join_matrix[(right_aliasname1,left_aliasname2)] = 1
-                                    join_matrix[(left_aliasname2,right_aliasname1)] = 1
+                                    join_matrix[(right_aliasname1, left_aliasname2)] = 1
+                                    join_matrix[(left_aliasname2, right_aliasname1)] = 1
                                     newList.append(ncp)
                             if right_aliasname1 == right_aliasname2 and right_columnname1 == right_columnname2:
-                                if not (left_aliasname1,left_aliasname2) in join_matrix:
+                                if not (left_aliasname1, left_aliasname2) in join_matrix:
                                     Flag = True
                                     # join_matrix[idx1l][idx2l]=1
                                     ncp = copy.deepcopy(comparison1)
                                     ncp.rexpr = comparison2.lexpr
                                     ncp.column_list[1] = comparison2.column_list[0]
                                     ncp.aliasname_list[1] = comparison2.aliasname_list[0]
-                                    join_matrix[(left_aliasname1,left_aliasname2)] = 1
-                                    join_matrix[(left_aliasname2,left_aliasname1)] = 1
+                                    join_matrix[(left_aliasname1, left_aliasname2)] = 1
+                                    join_matrix[(left_aliasname2, left_aliasname1)] = 1
                                     newList.append(ncp)
                             # print(len(newList),idx1r,idx2l)
             # print('sqlSample.py newList :',[newList])
-            comparison_list =  comparison_list+newList
+            comparison_list = comparison_list + newList
         # print("add----")
         # for cp in newList:
         #     print(str(cp))
         # print("add----")
         return comparison_list
+
     def resetJoin(self):
         self.aliasnames_fa = {}
         self.left_son = {}
         self.right_son = {}
         self.aliasnames_root_set = set([x.getAliasName() for x in self.from_table_list])
 
-        self.left_aliasname  = {}
-        self.right_aliasname =  {}
+        self.left_aliasname = {}
+        self.right_aliasname = {}
         self.aliasnames_join_set = {}
         for aliasname in self.aliasnames_root_set:
             self.aliasnames_set[aliasname] = set([aliasname])
@@ -376,17 +391,18 @@ class JoinTree:
                 self.aliasnames_join_set[aliasname].add(y[0])
 
         self.total = 0
-    def findFather(self,node_name):
+
+    def findFather(self, node_name):
         fa_name = node_name
-        while  fa_name in self.aliasnames_fa:
+        while fa_name in self.aliasnames_fa:
             fa_name = self.aliasnames_fa[fa_name]
-        while  node_name in self.aliasnames_fa:
+        while node_name in self.aliasnames_fa:
             temp_name = self.aliasnames_fa[node_name]
             self.aliasnames_fa[node_name] = fa_name
             node_name = temp_name
         return fa_name
 
-    def joinTables(self,aliasname_left,aliasname_right,fake=False):
+    def joinTables(self, aliasname_left, aliasname_right, fake=False):
         aliasname_left_fa = self.findFather(aliasname_left)
         aliasname_right_fa = self.findFather(aliasname_right)
         self.aliasnames_fa[aliasname_left_fa] = self.total
@@ -398,15 +414,19 @@ class JoinTree:
         self.left_aliasname[self.total] = aliasname_left
         self.right_aliasname[self.total] = aliasname_right
         if not fake:
-            self.aliasnames_set[self.total] = self.aliasnames_set[aliasname_left_fa]|self.aliasnames_set[aliasname_right_fa]
-            self.aliasnames_join_set[self.total] = (self.aliasnames_join_set[aliasname_left_fa]|self.aliasnames_join_set[aliasname_right_fa])-self.aliasnames_set[self.total]
+            self.aliasnames_set[self.total] = self.aliasnames_set[aliasname_left_fa] | self.aliasnames_set[
+                aliasname_right_fa]
+            self.aliasnames_join_set[self.total] = (self.aliasnames_join_set[aliasname_left_fa] |
+                                                    self.aliasnames_join_set[aliasname_right_fa]) - self.aliasnames_set[
+                                                       self.total]
             self.aliasnames_root_set.remove(aliasname_left_fa)
             self.aliasnames_root_set.remove(aliasname_right_fa)
 
         self.total += 1
-    def recTable(self,node):
-        if isinstance(node,int):
-            res =  "("
+
+    def recTable(self, node):
+        if isinstance(node, int):
+            res = "("
             leftRes = self.recTable(self.left_son[node])
             if not self.left_son[node] in self.aliasnames:
                 leftRes = leftRes[1:-1]
@@ -418,25 +438,26 @@ class JoinTree:
                 for condition in self.filter_list[self.left_son[node]]:
                     filter_list.append(str(condition))
 
-            if self.right_son[node] in self.filter_list :
+            if self.right_son[node] in self.filter_list:
                 for condition in self.filter_list[self.right_son[node]]:
                     filter_list.append(str(condition))
 
             cpList = []
-            joined_aliasname = set([self.left_aliasname[node],self.right_aliasname[node]])
+            joined_aliasname = set([self.left_aliasname[node], self.right_aliasname[node]])
             # print('joined_aliasname',joined_aliasname)
             for left_table in self.aliasnames_set[self.left_son[node]]:
-                for right_table,comparison in self.join_list[left_table]:
+                for right_table, comparison in self.join_list[left_table]:
                     if right_table in self.aliasnames_set[self.right_son[node]]:
-                        if (comparison.aliasname_list[1] in joined_aliasname and comparison.aliasname_list[0] in joined_aliasname):
+                        if (comparison.aliasname_list[1] in joined_aliasname and comparison.aliasname_list[
+                            0] in joined_aliasname):
                             cpList.append(str(comparison))
                         else:
                             on_list.append(str(comparison))
-            if len(filter_list+on_list+cpList)>0:
+            if len(filter_list + on_list + cpList) > 0:
                 res += "inner join "
                 res += self.recTable(self.right_son[node])
                 res += "\non "
-                res += " AND ".join(cpList + on_list+filter_list)
+                res += " AND ".join(cpList + on_list + filter_list)
             else:
                 res += "cross join "
                 res += self.recTable(self.right_son[node])
@@ -445,93 +466,118 @@ class JoinTree:
             return res
         else:
             return str(self.aliasname2fromtable[node])
-    def encode_tree_regular(self,model, node_idx):
+
+    def encode_tree_regular(self, model, node_idx):
 
         def get_inputX(node):
             left_aliasname = self.left_aliasname[node]
             right_aliasname = self.right_aliasname[node]
             if not config.leafalias:
-                left_emb =  model.leaf(torch.tensor([self.db_info.name2idx[self.aliasname2fullname[left_aliasname]]+40],device = device),self.table_fea_set[left_aliasname])
-                right_emb = model.leaf(torch.tensor([self.db_info.name2idx[self.aliasname2fullname[right_aliasname]]+40],device = device),self.table_fea_set[right_aliasname])
+                left_emb = model.leaf(
+                    torch.tensor([self.db_info.name2idx[self.aliasname2fullname[left_aliasname]] + 40], device=device),
+                    self.table_fea_set[left_aliasname])
+                right_emb = model.leaf(
+                    torch.tensor([self.db_info.name2idx[self.aliasname2fullname[right_aliasname]] + 40], device=device),
+                    self.table_fea_set[right_aliasname])
             if config.leafalias:
                 # print(self.aliasname2id[left_aliasname ]+40,self.aliasname2id[right_aliasname]+40)
-                left_emb =  model.leaf(torch.tensor([self.aliasname2id[left_aliasname ]+40],device = device),self.table_fea_set[left_aliasname])
-                right_emb = model.leaf(torch.tensor([self.aliasname2id[right_aliasname]+40],device = device),self.table_fea_set[right_aliasname])
-            return model.inputX(left_emb[0],right_emb[0])
+                left_emb = model.leaf(torch.tensor([self.aliasname2id[left_aliasname] + 40], device=device),
+                                      self.table_fea_set[left_aliasname])
+                right_emb = model.leaf(torch.tensor([self.aliasname2id[right_aliasname] + 40], device=device),
+                                       self.table_fea_set[right_aliasname])
+            return model.inputX(left_emb[0], right_emb[0])
+
         def encode_node(node):
             if node in tlm:
                 return tlm[node]
-            if isinstance(node,int):
-                left_h , left_c  = encode_node(self.left_son[node])
+            if isinstance(node, int):
+                left_h, left_c = encode_node(self.left_son[node])
                 right_h, right_c = encode_node(self.right_son[node])
                 inputX = get_inputX(node)
-                res =  model.childrenNode(left_h, left_c, right_h, right_c,inputX)
+                res = model.childrenNode(left_h, left_c, right_h, right_c, inputX)
                 if self.total > node + 1:
                     tlm[node] = res
             else:
                 if not config.leafalias:
-                    res =  model.leaf(torch.tensor([self.db_info.name2idx[self.aliasname2fullname[node]]],device = device),self.table_fea_set[node])
+                    res = model.leaf(
+                        torch.tensor([self.db_info.name2idx[self.aliasname2fullname[node]]], device=device),
+                        self.table_fea_set[node])
                 else:
-                    res =  model.leaf(torch.tensor([self.aliasname2id[node]],device = device),self.table_fea_set[node])
+                    res = model.leaf(torch.tensor([self.aliasname2id[node]], device=device), self.table_fea_set[node])
                 tlm[node] = res
             return res
+
         encoding, _ = encode_node(node_idx)
         return encoding
-    def encode_tree_fold(self,fold, node_idx):
+
+    def encode_tree_fold(self, fold, node_idx):
         def get_inputX(node):
             left_aliasname = self.left_aliasname[node]
             right_aliasname = self.right_aliasname[node]
             if not config.leafalias:
-                left_emb,c1 =  fold.add('leaf',self.db_info.name2idx[self.aliasname2fullname[left_aliasname]]+40,self.table_fea_set[left_aliasname]).split(2)
-                right_emb,c2 = fold.add('leaf',self.db_info.name2idx[self.aliasname2fullname[right_aliasname]]+40,self.table_fea_set[right_aliasname]).split(2)
+                left_emb, c1 = fold.add('leaf', self.db_info.name2idx[self.aliasname2fullname[left_aliasname]] + 40,
+                                        self.table_fea_set[left_aliasname]).split(2)
+                right_emb, c2 = fold.add('leaf', self.db_info.name2idx[self.aliasname2fullname[right_aliasname]] + 40,
+                                         self.table_fea_set[right_aliasname]).split(2)
             else:
-                left_emb,c1 =  fold.add('leaf',torch.tensor([self.aliasname2id[left_aliasname]+40],device = device),self.table_fea_set[left_aliasname]).split(2)
-                right_emb,c2 = fold.add('leaf',torch.tensor([self.aliasname2id[right_aliasname]+40],device = device),self.table_fea_set[right_aliasname]).split(2)
-            return fold.add('inputX',left_emb,right_emb)
+                left_emb, c1 = fold.add('leaf', torch.tensor([self.aliasname2id[left_aliasname] + 40], device=device),
+                                        self.table_fea_set[left_aliasname]).split(2)
+                right_emb, c2 = fold.add('leaf', torch.tensor([self.aliasname2id[right_aliasname] + 40], device=device),
+                                         self.table_fea_set[right_aliasname]).split(2)
+            return fold.add('inputX', left_emb, right_emb)
+
         def encode_node(node):
 
-            if isinstance(node,int):
+            if isinstance(node, int):
                 left_h, left_c = encode_node(self.left_son[node])
                 right_h, right_c = encode_node(self.right_son[node])
                 inputX = get_inputX(node)
-                return fold.add('childrenNode',left_h, left_c, right_h, right_c,inputX).split(2)
+                return fold.add('childrenNode', left_h, left_c, right_h, right_c, inputX).split(2)
             else:
                 if not config.leafalias:
-                    return fold.add('leaf',self.db_info.name2idx[self.aliasname2fullname[node]],self.table_fea_set[node]).split(2)
+                    return fold.add('leaf', self.db_info.name2idx[self.aliasname2fullname[node]],
+                                    self.table_fea_set[node]).split(2)
                 else:
-                    return fold.add('leaf',torch.tensor([self.aliasname2id[node]],device = device),self.table_fea_set[node]).split(2)
+                    return fold.add('leaf', torch.tensor([self.aliasname2id[node]], device=device),
+                                    self.table_fea_set[node]).split(2)
             return None
+
         encoding, _ = encode_node(node_idx)
         return encoding
-    def hint(self,node):
-        if isinstance(node,int):
+
+    def hint(self, node):
+        if isinstance(node, int):
             leftRes = self.hint(self.left_son[node])
             rightRes = self.hint(self.right_son[node])
-            return '('+leftRes+' '+rightRes+')'
+            return '(' + leftRes + ' ' + rightRes + ')'
         else:
             # print(node)
             return node
-    
-    def toSql(self,):
+
+    def toSql(self, ):
         root = self.total - 1
         if config.use_hint:
-            self.hintlist ="/*+\nLeading("+self.hint(root)+")\n*/\n"
-            res = self.hintlist+self.sql
+            self.hintlist = "/*+\nLeading(" + self.hint(root) + ")\n*/\n"
+            res = self.hintlist + self.sql
             # print(res)
             return res
-        res = "select "+",\n".join([str(x) for x in self.target_table_list])+"\n"
-        res  += "from " + self.recTable(root)[1:-1]
+        res = "select " + ",\n".join([str(x) for x in self.target_table_list]) + "\n"
+        res += "from " + self.recTable(root)[1:-1]
         res += ";"
+        print(res)
         return res
+
     def plan2Cost(self):
         sql = self.toSql()
-        return pgrunner.getLatency(self.sqlt,sql)
-    def getResult(self,):
+        return pgrunner.getLatency(self.sqlt, sql)
+
+    def getResult(self, ):
         sql = self.toSql()
-        return pgrunner.getResult(self.sqlt,sql)
+        return pgrunner.getResult(self.sqlt, sql)
+
 
 class sqlInfo:
-    def __init__(self,pgrunner,sql,filename,trained = False):
+    def __init__(self, pgrunner, sql, filename, trained=False):
         self.DPLantency = None
         self.DPCost = None
         self.bestLatency = None
@@ -545,26 +591,30 @@ class sqlInfo:
         self.useCost = False
         self.DPalready = False
         self.alias_cnt = 0
-    def getDPlantecy(self,):
+
+    def getDPlantecy(self, ):
         if self.DPLantency == None:
             if not self.trained:
-                self.DPLantency = pgrunner.getLatency(self,self.sql)
+                self.DPLantency = pgrunner.getLatency(self, self.sql)
             else:
                 self.DPLantency = config.maxTimeOut
-                self.DPLantency = pgrunner.getLatency(self,self.sql)
-                if self.DPLantency>=self.timeout():
+                self.DPLantency = pgrunner.getLatency(self, self.sql)
+                if self.DPLantency >= self.timeout():
                     self.useCost = True
                 self.DPalready = True
         return self.DPLantency
-    def getDPPlantime(self,):
+
+    def getDPPlantime(self, ):
         if self.plTime == None:
-            self.plTime = pgrunner.getDPPlanTime(self,self.sql)
+            self.plTime = pgrunner.getDPPlanTime(self, self.sql)
         return self.plTime
-    def getDPCost(self,):
+
+    def getDPCost(self, ):
         if self.DPCost == None:
-            self.DPCost = pgrunner.getCost(self,self.sql)
+            self.DPCost = pgrunner.getCost(self, self.sql)
         return self.DPCost
-    def timeout(self,):
+
+    def timeout(self, ):
         if self.trained and not self.DPalready:
             return config.maxTimeOut
         if self.DPLantency == None:
@@ -574,20 +624,18 @@ class sqlInfo:
                 return config.maxTimeOut
         # if self.getDPlantecy()>20*1000:
         #     return self.getDPlantecy()*4+self.getDPPlantime()
-        if self.getDPlantecy()>10*1000:
-            return self.getDPlantecy()*4+self.getDPPlantime()
+        if self.getDPlantecy() > 10 * 1000:
+            return self.getDPlantecy() * 4 + self.getDPPlantime()
         # if self.getDPlantecy()>2*1000:
         #     return self.getDPlantecy()*5+self.getDPPlantime()
-        if self.getDPlantecy()>2*100:
-            return self.getDPlantecy()*5+self.getDPPlantime()
-        return 1000.0+self.getDPPlantime()
-    def getBestOrder(self,):
+        if self.getDPlantecy() > 2 * 100:
+            return self.getDPlantecy() * 5 + self.getDPPlantime()
+        return 1000.0 + self.getDPPlantime()
+
+    def getBestOrder(self, ):
         return self.bestOrder
-    def updateBestOrder(self,latency,order):
+
+    def updateBestOrder(self, latency, order):
         if self.bestOrder == None or self.bestLatency > latency:
             self.bestLatency = latency
             self.bestOrder = order
-
-
-
-
