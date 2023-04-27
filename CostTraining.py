@@ -169,6 +169,8 @@ def train(trainSet, validateSet):
             if done:
                 print("done taking actionsgot reward")
                 sqlt.updateBestOrder(reward, action_this_epi)
+
+                print("best order:" ,sqlt.getBestOrder() )
                 baselines.append(reward)
                 reward = log(1 + reward)
                 if reward > config.maxR:
@@ -259,7 +261,7 @@ def train(trainSet, validateSet):
             target_net.load_state_dict(policy_net.state_dict())
         if i_episode % save_every == 0:
             torch.save(policy_net.cpu().state_dict(), 'CostTraining' + str(i_episode) + '.pth')
-    torch.save(policy_net.cpu().state_dict(), 'saved_model/job_cost_trained.pth')
+    torch.save(policy_net.cpu().state_dict(), 'saved_model/stack_cost_trained.pth')
     # policy_net = policy_net.cuda()
 
 
@@ -272,30 +274,30 @@ if __name__ == '__main__':
     print(len(Q4), len(Q1))
     # print(Q4,Q1)
 
-    # ENERGY CODE START
-    psensor = findPowerSensor("YWATTMK1-1F6860.power")
-    stopDataRecording(psensor)
-    clearPowerMeterCache(psensor)
-    tm = time.time()
-    datalog = psensor.get_dataLogger()
-    datalog.set_timeUTC(time.time())
-    startDataRecording(psensor)  # Power Meter starts recording power per second
-    time.sleep(2.0)
-    print("4 - is recording: ", psensor.get_dataLogger().get_recording())
-    startTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
-    # ENERGY CODE END
+    # # ENERGY CODE START
+    # psensor = findPowerSensor("YWATTMK1-1F6860.power")
+    # stopDataRecording(psensor)
+    # clearPowerMeterCache(psensor)
+    # tm = time.time()
+    # datalog = psensor.get_dataLogger()
+    # datalog.set_timeUTC(time.time())
+    # startDataRecording(psensor)  # Power Meter starts recording power per second
+    # time.sleep(2.0)
+    # print("4 - is recording: ", psensor.get_dataLogger().get_recording())
+    # startTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
+    # # ENERGY CODE END
 
     train(Q4 + sytheticQueries, Q1)
 
-    # ENERGY CODE START
-    endTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
-    # print("4-4 - is recording: ", psensor.get_dataLogger().get_recording())
-    print("startTime: ", startTime, " - endTime: ", endTime)
-    # YAPI.Sleep(2000)
-    time.sleep(2.0)
-    print("stop recording : ", datetime.now())
-    stopDataRecording(psensor)
-    print("7 - is recording: ", psensor.get_dataLogger().get_recording())
-
-    (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
-    # ENERGY CODE END
+    # # ENERGY CODE START
+    # endTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
+    # # print("4-4 - is recording: ", psensor.get_dataLogger().get_recording())
+    # print("startTime: ", startTime, " - endTime: ", endTime)
+    # # YAPI.Sleep(2000)
+    # time.sleep(2.0)
+    # print("stop recording : ", datetime.now())
+    # stopDataRecording(psensor)
+    # print("7 - is recording: ", psensor.get_dataLogger().get_recording())
+    #
+    # (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
+    # # ENERGY CODE END

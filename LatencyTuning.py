@@ -42,7 +42,7 @@ featureSize = 128
 policy_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 40*41,device=device).to(device)
 target_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 40*41,device=device).to(device)
 
-policy_net.load_state_dict(torch.load("saved_model/job_cost_trained.pth"))
+policy_net.load_state_dict(torch.load("saved_model/stack_cost_trained.pth"))
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
