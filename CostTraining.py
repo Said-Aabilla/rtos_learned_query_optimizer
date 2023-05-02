@@ -13,6 +13,7 @@
 # under the License.
 from PGUtils import pgrunner
 from energy.energy_functions import *
+from query_house_api.query import create_query, update_query_join_order
 from sqlSample import sqlInfo
 import numpy as np
 from itertools import count
@@ -38,8 +39,8 @@ db_info = DB(createSchema)
 
 featureSize = 128
 
-policy_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=1628, device=device).to(device)
-target_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=1628, device=device).to(device)
+policy_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=1640, device=device).to(device)
+target_net = SPINN(n_classes=1, size=featureSize, n_words=100, mask_size=1640, device=device).to(device)
 
 for name, param in policy_net.named_parameters():
     print(name, param.shape)
@@ -140,6 +141,7 @@ def resample_sql(sql_list):
 
 def train(trainSet, validateSet):
     baselines = []
+    saved_query_ids = []
     for sqlt in trainSet:
         # break
         print("I am here with sqlt : ", sqlt.filename)
@@ -198,12 +200,18 @@ def train(trainSet, validateSet):
     print_every = 20
     TARGET_UPDATE = 3
     save_every = 200
-    for i_episode in range(0, 1600):
+    for i_episode in range(0,10 ):
         print("Reched episode: ", i_episode)
         if i_episode % 200 == 100:
             trainSet = resample_sql(trainSet_temp)
         #     sql = random.sample(train_list_back,1)[0][0]
         sqlt = random.sample(trainSet[0:], 1)[0]
+        # save query to query_house
+        query_id = create_query(sqlt.sql)
+        print("query_id: ",query_id)
+
+        saved_query_ids.append(query_id)
+        print("saved_query_ids: ",saved_query_ids)
         pg_cost = sqlt.getDPlantecy()
         env = ENV(sqlt, db_info, pgrunner, device)
 
@@ -232,6 +240,7 @@ def train(trainSet, validateSet):
             previous_state_list.append((value_now, next_value.view(-1, 1), env_now))
             if done:
                 sqlt.updateBestOrder(reward, action_this_epi)
+                update_query_join_order(query_id, action_this_epi)
                 reward = log(reward + 1)
                 if reward > config.maxR:
                     reward = config.maxR
@@ -259,9 +268,9 @@ def train(trainSet, validateSet):
                 break
         if i_episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
-        if i_episode % save_every == 0:
-            torch.save(policy_net.cpu().state_dict(), 'CostTraining' + str(i_episode) + '.pth')
-    torch.save(policy_net.cpu().state_dict(), 'saved_model/stack_cost_trained.pth')
+        # if i_episode % save_every == 0:
+            # torch.save(policy_net.cpu().state_dict(), 'CostTraining' + str(i_episode) + '.pth')
+    torch.save(policy_net.cpu().state_dict(), 'saved_model/test.pth')
     # policy_net = policy_net.cuda()
 
 

@@ -13,12 +13,12 @@
 # under the License.
 class Config:
     def __init__(self,):
-        self.sytheticDir = "workload/stack-queries-up/"  #"sytheticQueries/"
-        self.JOBDir = "workload/stack-queries-up/"
+        self.sytheticDir = "workload/job-queries/"  #"sytheticQueries/"
+        self.JOBDir = "workload/job-queries/"
         # q9-089.sql
         self.rootPool = "meanPool"
-        self.schemaFile = "stack_schema.sql"
-        self.dbName = "stack"
+        self.schemaFile = "job_schema.sql"
+        self.dbName = "imdbload"
         self.userName = "postgres"
         self.password = "postgres"
         self.usegpu = True
@@ -39,7 +39,7 @@ class Config:
         self.isCostTraining = True
         self.latencyRecord = True
         self.leafalias  = True
-        self.latencyRecordFile = 'stack_l_t.json'
+        self.latencyRecordFile = 'l_t.json'
         self.max_parallel_workers_per_gather = 1
         self.max_parallel_workers = 1
         self.enable_mergejoin = True
