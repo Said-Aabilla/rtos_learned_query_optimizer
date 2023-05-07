@@ -115,14 +115,16 @@ class ENV(object):
                 sql = self.sel.toSql()
                 val1 = self.sel.plan2Cost()
                 val2 = self.sel.sqlt.getDPlantecy()
-                print("rtos cost" ,val1)
-                # self.create_file("workload/rtos-stack-solutions/", filename, sql)
+                # print("rtos cost" ,val1)
+                # self.create_file("workload/testing_api/", filename, sql)
 
-                return val1/val2, True
+                return val1/val2, True , val1 , sql
             else:
-                return self.sel.getResult(),True
+                sql = self.sel.toSql()
+                val1 = self.sel.plan2Cost()
+                return self.sel.getResult(),True , val1, sql
         else:
-            return 0,False
+            return 0,False , 0, ''
 
     def create_file(self, directory, filename, content):
             # Create the directory if it doesn't already exist

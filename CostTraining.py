@@ -13,6 +13,7 @@
 # under the License.
 from PGUtils import pgrunner
 from energy.energy_functions import *
+from energy.solutin_latency_and_energy import get_query_latency
 from query_house_api.query import create_query, update_query_join_order
 from sqlSample import sqlInfo
 import numpy as np
@@ -113,7 +114,7 @@ def resample_sql(sql_list):
             right = chosen_action[1]
             env.takeAction(left, right)
 
-            reward, done = env.reward_new()
+            reward, done, rtos_cost, new_query = env.reward_new()
             if done:
                 mrc = max(reward - 1, 0)
                 rewardsP.append(reward)
@@ -166,13 +167,13 @@ def train(trainSet, validateSet):
             env.takeAction(left, right)
             action_this_epi.append((left, right))
 
-            reward, done = env.reward_new()
+            reward, done, rtos_cost, new_query = env.reward_new()
             previous_state_list.append((value_now, next_value.view(-1, 1), env_now))
             if done:
                 print("done taking actionsgot reward")
                 sqlt.updateBestOrder(reward, action_this_epi)
 
-                print("best order:" ,sqlt.getBestOrder() )
+                print("best order:", sqlt.getBestOrder())
                 baselines.append(reward)
                 reward = log(1 + reward)
                 if reward > config.maxR:
@@ -200,20 +201,23 @@ def train(trainSet, validateSet):
     print_every = 20
     TARGET_UPDATE = 3
     save_every = 200
-    for i_episode in range(0,10 ):
+    for i_episode in range(0, 10):
         print("Reched episode: ", i_episode)
         if i_episode % 200 == 100:
             trainSet = resample_sql(trainSet_temp)
         #     sql = random.sample(train_list_back,1)[0][0]
         sqlt = random.sample(trainSet[0:], 1)[0]
+
         # save query to query_house
         query_id = create_query(sqlt.sql)
-        print("query_id: ",query_id)
+        print("query_id: ", query_id)
 
         saved_query_ids.append(query_id)
-        print("saved_query_ids: ",saved_query_ids)
+        print("saved_query_ids: ", saved_query_ids)
+
         pg_cost = sqlt.getDPlantecy()
         env = ENV(sqlt, db_info, pgrunner, device)
+        print("pg_cost ", pg_cost)
 
         previous_state_list = []
         action_this_epi = []
@@ -236,11 +240,21 @@ def train(trainSet, validateSet):
             env.takeAction(left, right)
             action_this_epi.append((left, right))
 
-            reward, done = env.reward_new()
+            reward, done, rtos_cost, new_query = env.reward_new()
             previous_state_list.append((value_now, next_value.view(-1, 1), env_now))
             if done:
                 sqlt.updateBestOrder(reward, action_this_epi)
-                update_query_join_order(query_id, action_this_epi)
+                print("rtos_cost ", rtos_cost)
+                rtos_exec_time = get_query_latency(new_query, True)
+                print("rtos_exec_time ", rtos_exec_time)
+                pg_exec_time = get_query_latency(new_query, False)
+                print("pg_exec_time ", pg_exec_time)
+                rtos_energy = get_query_exec_energy(new_query, True)
+                print("rtos_energy ", pg_exec_time)
+                pg_energy = get_query_exec_energy(new_query, False)
+                print("pg_energy ", pg_energy)
+
+                update_query_join_order(query_id, action_this_epi, rtos_exec_time, pg_exec_time,rtos_energy, pg_energy)
                 reward = log(reward + 1)
                 if reward > config.maxR:
                     reward = config.maxR
@@ -269,7 +283,7 @@ def train(trainSet, validateSet):
         if i_episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
         # if i_episode % save_every == 0:
-            # torch.save(policy_net.cpu().state_dict(), 'CostTraining' + str(i_episode) + '.pth')
+        # torch.save(policy_net.cpu().state_dict(), 'CostTraining' + str(i_episode) + '.pth')
     torch.save(policy_net.cpu().state_dict(), 'saved_model/test.pth')
     # policy_net = policy_net.cuda()
 

@@ -4,7 +4,7 @@ import time
 
 import psycopg2
 
-from energy_functions import *
+from energy.energy_functions import *
 
 
 def connect_bdd(name):
@@ -31,11 +31,9 @@ END;
 $$ LANGUAGE plpgsql;
 """
 
-def get_query_exec_energy(cursor, query, force_order):
-    # conn, cursor = connect_bdd("stack")
+def get_query_exec_energy( query, force_order):
+    conn, cursor = connect_bdd("imdbload")
 
-    cursor.execute("set max_parallel_workers=1;")
-    cursor.execute("set max_parallel_workers_per_gather = 1;")
 
     # Prepare query
     join_collapse_limit = "SET join_collapse_limit ="
@@ -71,11 +69,13 @@ def get_query_exec_energy(cursor, query, force_order):
 
     (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
 
-    return (power, exec_time, energy)
+    return  energy
 
 
 
-def get_query_latency(query, cursor, force_order):
+def get_query_latency(query,force_order):
+
+    conn, cursor = connect_bdd("imdbload")
     join_collapse_limit = "SET join_collapse_limit ="
     join_collapse_limit += "1;" if force_order else "8;"
     cursor.execute(join_collapse_limit)
@@ -92,52 +92,3 @@ def get_query_latency(query, cursor, force_order):
 
     return latency
 
-
-if __name__ == "__main__":
-
-    conn, cursor = connect_bdd("stack")
-    algo_metadata = {}
-    # Set the path to the directory containing the files
-    directory_path = "../workload/rtos-stack-solutions"
-
-    index = 0
-    # Loop over all the files in the directory
-    for filename in os.listdir(directory_path) :
-        index = index +1
-        # Check if the file is a file and not a directory
-        if os.path.isfile(os.path.join(directory_path, filename)) and index < 113: # and filename in elements:
-
-            # Open the file for reading
-            with open(os.path.join(directory_path, filename), 'r') as file:
-                # Read the contents of the file
-                query = file.read()
-                print(filename)
-                algo_metadata[filename] = []
-
-                power, exec_time, pg_energy = get_query_exec_energy(cursor,query,  False)
-                power_2, exec_time_2, rtos_energy = get_query_exec_energy(cursor,query, True)
-
-                pg_latency = get_query_latency(query, cursor, False)
-                rtos_latency = get_query_latency(query, cursor, True)
-
-                # energy_tot.append(energy)
-                # latency_tot[filename] = latency
-                print(pg_latency)
-                print(rtos_latency)
-                algo_metadata[filename].append(pg_latency)
-                algo_metadata[filename].append(pg_energy)
-                algo_metadata[filename].append(rtos_latency)
-                algo_metadata[filename].append(rtos_energy)
-                # print("energy : ",energy_tot)
-        print("----------------------------------------------------------")
-    print("saving csv")
-    # open a CSV file for writing
-    with open('stack_rtos_latency.csv', 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-
-        # write the header row
-        writer.writerow(['Filename', 'pg_latency', 'rtos_latency', 'pg_energy', 'rtos_energy'])
-        for filename, data in algo_metadata.items():
-            writer.writerow([filename, data[0], data[2], data[1], data[3]])
-
-    print("-----------------------------")

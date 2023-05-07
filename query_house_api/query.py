@@ -16,6 +16,7 @@ alias_name_2_table_name = {'chn': 'char_name', 'ci': 'cast_info', 'cn': 'company
                            'kt': 'kind_type', 'kt1': 'kind_type', 'kt2': 'kind_type', 'at': 'aka_title',
                            'an': 'aka_name', 'an1': 'aka_name', 'cc': 'complete_cast', 'cct1': 'comp_cast_type',
                            'cct2': 'comp_cast_type', 'it': 'info_type', 'it1': 'info_type', 'it2': 'info_type',
+                           'it3': 'info_type',
                            'pi': 'person_info', 'n1': 'name', 'n': 'name'}
 
 operator_map = {
@@ -37,7 +38,6 @@ operator_map = {
 def get_table_id(table_name):
     url = f'{BASE_URL}/tables/{table_name}'
     response = requests.get(url)
-    print(response.json())
     if response.status_code == 200:
         return response.json()['table_id']
     else:
@@ -47,7 +47,6 @@ def get_table_id(table_name):
 def get_attribute_id(attribute_name, table_name):
     url = f'{BASE_URL}/tables/{table_name}/attributes/{attribute_name}'
     response = requests.get(url)
-    print(response.json())
 
     if response.status_code == 200:
         return response.json()['attribute_id']
@@ -55,11 +54,17 @@ def get_attribute_id(attribute_name, table_name):
         return None
 
 
-def update_query_join_order(query_id, join_order):
+def update_query_join_order(query_id, join_order, rtos_exec_time, pg_exec_time, rtos_energy, pg_energy):
     url = f'{BASE_URL}/queries/updateJoinOrder'
-    data = {'queryId': query_id, 'joinOrder': join_order}
+    data = {
+        'queryId': query_id,
+        'joinOrder': join_order,
+        'rtosExecTime': rtos_exec_time,
+        'pgExecTime': pg_exec_time,
+        'rtosEnergy': rtos_energy,
+        'pgEnergy': pg_energy,
+    }
     response = requests.put(url, data=json.dumps(data), headers=headers)
-    print(response.json())
 
     if response.status_code == 200:
         return response.json()
@@ -74,7 +79,6 @@ def create_query(query):
     print(query_json)
 
     response = requests.post(BASE_URL + '/queries/', data=json.dumps(json_object), headers=headers)
-    print(response.json())
 
     if response.status_code == 200:
         query_id = response.json()['id']
@@ -147,16 +151,25 @@ def get_query_projections(parsed_select):
                 if isinstance(value, str):
                     projection_aliases.append(value)
     else:
-        for prop, value in parsed_select.items():
+        if not isinstance(parsed_select, list):
+            parsed_select = parsed_select.items()
+        for prop, value in parsed_select:
             projection = {}
             if isinstance(value, dict):
                 key_list = list(value.keys())
                 key = key_list[0]
-                projection['all'] = False
-                projection['aggregation'] = key
-                projection['projection'] = f"{key} ({value[key]})"
-                projection['attribute_id'] = get_attribute_id(value[key].split('.')[1],
-                                                              alias_name_2_table_name[value[key].split('.')[0]])
+
+                if key == 'count':
+                    projection['all'] = True
+                    projection['aggregation'] = key
+                    projection['projection'] = f"{key}(*)"
+                    projection['attribute_id'] = None
+                else:
+                    projection['all'] = False
+                    projection['aggregation'] = key
+                    projection['projection'] = f"{key} ({value[key]})"
+                    projection['attribute_id'] = get_attribute_id(value[key].split('.')[1],
+                                                                  alias_name_2_table_name[value[key].split('.')[0]])
                 projections.append(projection)
             if isinstance(value, str):
                 projection_aliases.append(value)
@@ -170,7 +183,6 @@ def get_join_conditions(parsed_query):
 
     joins = []
     selection_conditions = []
-
     for condition in join_conditions:
         join = {}
         join_attributes = []
@@ -210,7 +222,7 @@ def get_selections(parsed_query, selection_conditions):
     where_clause = where_clause.replace("<>", "!=")
 
     # Define a regular expression pattern to extract the attribute name and comparison operator
-    pattern = r'(?P<attribute>\w+\.\w+)\s+(?P<operator>=|!=|>|<|LIKE|NOT LIKE|IN|BETWEEN)\s+(?P<value>\'.*?\'|\(.*?\)|\d+)'
+    pattern = r'(?P<attribute>\w+\.\w+)\s+(?P<operator>=|!=|>|<|LIKE|NOT LIKE|IN|NOT IN|BETWEEN)\s+(?P<value>\'.*?\'|\(.*?\)|\d+)'
 
     # Split the WHERE clause statement into individual selection statements
     selection_statements = re.split(r'\s+(?:AND)\s+', where_clause.replace('WHERE', ''), flags=re.IGNORECASE)
@@ -243,13 +255,13 @@ def get_selections(parsed_query, selection_conditions):
                 'domain_id': 1
             })
 
-        # Assemble the selection object for this selection statement
-        selection.append({
-            'selection': statement,
-            'attribute_id': attribute_id,
-            'operators': operators
-        })
-    return selection
+            # Assemble the selection object for this selection statement
+            selection.append({
+                'selection': statement,
+                'attribute_id': attribute_id,
+                'operators': operators
+            })
+            return selection
 
 
 if __name__ == '__main__':

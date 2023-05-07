@@ -15,7 +15,6 @@ class Config:
     def __init__(self,):
         self.sytheticDir = "workload/job-queries/"  #"sytheticQueries/"
         self.JOBDir = "workload/job-queries/"
-        # q9-089.sql
         self.rootPool = "meanPool"
         self.schemaFile = "job_schema.sql"
         self.dbName = "imdbload"
@@ -24,7 +23,7 @@ class Config:
         self.usegpu = True
         self.ip = "127.0.0.1"
         self.port = 5432
-        self.use_hint = True
+        self.use_hint = False
         self.maxTimeOut = 10*1000
         self.batchsize = 16
         self.gen_time = 200

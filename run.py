@@ -42,9 +42,9 @@ db_info = DB(createSchema)
 
 featureSize = 128
 
-policy_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 1628,device=device).to(device)
-target_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 1628,device=device).to(device)
-policy_net.load_state_dict(torch.load("saved_model/stack_cost_trained.pth"))
+policy_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 1640,device=device).to(device)
+target_net = SPINN(n_classes = 1, size = featureSize, n_words = 100,mask_size= 1640,device=device).to(device)
+policy_net.load_state_dict(torch.load("saved_model/job_cost_trained_20k_queries.pth"))
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
@@ -54,7 +54,7 @@ if __name__=='__main__':
 
 
         # Set the path to the directory containing the files
-        directory_path = "workload/stack-queries-up"
+        directory_path = "workload/job-queries"
         # elements = ['3b.sql', '1a.sql', '32a.sql', '8a.sql', '7a.sql', '25a.sql', '19a.sql', '22a.sql', '24a.sql', '28a.sql', '29b.sql']
 
         algo_metadata = {}
@@ -64,7 +64,7 @@ if __name__=='__main__':
         for filename in os.listdir(directory_path) :
             index = index +1
             # Check if the file is a file and not a directory
-            if os.path.isfile(os.path.join(directory_path, filename)) and index < 113: # and filename in elements:
+            if os.path.isfile(os.path.join(directory_path, filename)) : # and filename in elements:
 
                 # Open the file for reading
                 with open(os.path.join(directory_path, filename), 'r') as file:
@@ -78,16 +78,16 @@ if __name__=='__main__':
                     # print("pg cost", sqlSample.getDPCost())
 
                     # ENERGY CODE START
-                    psensor = findPowerSensor("YWATTMK1-1F6860.power")
-                    stopDataRecording(psensor)
-                    clearPowerMeterCache(psensor)
-                    tm = time.time()
-                    datalog = psensor.get_dataLogger()
-                    datalog.set_timeUTC(time.time())
-                    startDataRecording(psensor)  # Power Meter starts recording power per second
-                    time.sleep(2.0)
-                    print("4 - is recording: ", psensor.get_dataLogger().get_recording())
-                    startTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
+                    # psensor = findPowerSensor("YWATTMK1-1F6860.power")
+                    # stopDataRecording(psensor)
+                    # clearPowerMeterCache(psensor)
+                    # tm = time.time()
+                    # datalog = psensor.get_dataLogger()
+                    # datalog.set_timeUTC(time.time())
+                    # startDataRecording(psensor)  # Power Meter starts recording power per second
+                    # time.sleep(2.0)
+                    # print("4 - is recording: ", psensor.get_dataLogger().get_recording())
+                    # startTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
                     # ENERGY CODE END
 
 
@@ -103,45 +103,45 @@ if __name__=='__main__':
                             reward, done = env.reward_new(filename)
                             if done:
                                 run_end_time = time.time()
-                                # ENERGY CODE START
-                                endTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
-                                # print("4-4 - is recording: ", psensor.get_dataLogger().get_recording())
-                                print("startTime: ", startTime, " - endTime: ", endTime)
-                                # YAPI.Sleep(2000)
-                                time.sleep(2.0)
-                                print("stop recording : ", datetime.now())
-                                stopDataRecording(psensor)
-                                print("7 - is recording: ", psensor.get_dataLogger().get_recording())
-
-                                (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
-                                # ENERGY CODE END
+                                # # ENERGY CODE START
+                                # endTime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S:%f')
+                                # # print("4-4 - is recording: ", psensor.get_dataLogger().get_recording())
+                                # print("startTime: ", startTime, " - endTime: ", endTime)
+                                # # YAPI.Sleep(2000)
+                                # time.sleep(2.0)
+                                # print("stop recording : ", datetime.now())
+                                # stopDataRecording(psensor)
+                                # print("7 - is recording: ", psensor.get_dataLogger().get_recording())
+                                #
+                                # (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
+                                # # ENERGY CODE END
 
                                 # Calculate time difference in milliseconds
                                 time_diff_ms = (run_end_time - run_start_time) * 1000
 
                                 # Print result in milliseconds
                                 print("Time taken: {:.2f} ms".format(time_diff_ms))
-                                print("algo meta data: ",algo_metadata)
-
-                                algo_metadata[str(filename)].append(time_diff_ms)
-                                algo_metadata[str(filename)].append(energy)
-                                print("algo meta data: ",algo_metadata)
+                                # print("algo meta data: ",algo_metadata)
+                                #
+                                # algo_metadata[str(filename)].append(time_diff_ms)
+                                # algo_metadata[str(filename)].append(energy)
+                                # print("algo meta data: ",algo_metadata)
                     except Exception:
                         print("continue")
-
-        print("saving csv")
-        # open a CSV file for writing
-        with open('stack_solutions_info.csv', 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-
-            # write the header row
-            writer.writerow(['Filename', 'RunTime Diff (ms)', 'Run Energy'])
-            for filename, data in algo_metadata.items():
-                print(filename,data)
-                writer.writerow([filename, data[0], data[1]])
-
+        #
+        # print("saving csv")
+        # # open a CSV file for writing
+        # with open('stack_solutions_info.csv', 'w', newline='') as csvfile:
+        #     writer = csv.writer(csvfile)
+        #
+        #     # write the header row
+        #     writer.writerow(['Filename', 'RunTime Diff (ms)', 'Run Energy'])
+        #     for filename, data in algo_metadata.items():
+        #         print(filename,data)
+        #         writer.writerow([filename, data[0], data[1]])
+        #
         print("-----------------------------")
-
+        #
 
     # ###No online update now
     # print("Enter each query in one line")

@@ -564,7 +564,6 @@ class JoinTree:
         res = "select " + ",\n".join([str(x) for x in self.target_table_list]) + "\n"
         res += "from " + self.recTable(root)[1:-1]
         res += ";"
-        print(res)
         return res
 
     def plan2Cost(self):
