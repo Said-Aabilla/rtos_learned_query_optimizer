@@ -14,7 +14,7 @@ alias_name_2_table_name = {'chn': 'char_name', 'ci': 'cast_info', 'cn': 'company
                            'ml': 'movie_link', 'mi': 'movie_info', 'mi_idx': 'movie_info_idx',
                            'mi_idx2': 'movie_info_idx', 'mi_idx1': 'movie_info_idx', 'miidx': 'movie_info_idx',
                            'kt': 'kind_type', 'kt1': 'kind_type', 'kt2': 'kind_type', 'at': 'aka_title',
-                           'an': 'aka_name', 'an1': 'aka_name', 'cc': 'complete_cast', 'cct1': 'comp_cast_type',
+                           'an': 'aka_name','a1': 'aka_name', 'an1': 'aka_name', 'cc': 'complete_cast', 'cct1': 'comp_cast_type',
                            'cct2': 'comp_cast_type', 'it': 'info_type', 'it1': 'info_type', 'it2': 'info_type',
                            'it3': 'info_type',
                            'pi': 'person_info', 'n1': 'name', 'n': 'name'}
@@ -54,13 +54,17 @@ def get_attribute_id(attribute_name, table_name):
         return None
 
 
-def update_query_join_order(query_id, join_order, rtos_exec_time, pg_exec_time, rtos_energy, pg_energy):
+def update_query_join_order(filename, episode,query_id, join_order, rtos_exec_time, pg_exec_time, rtos_energy, pg_energy, rtos_cost, pg_cost):
     url = f'{BASE_URL}/queries/updateJoinOrder'
     data = {
         'queryId': query_id,
+        'filename': filename,
+        'episode': episode,
         'joinOrder': join_order,
         'rtosExecTime': rtos_exec_time,
         'pgExecTime': pg_exec_time,
+        'rtosCost': rtos_cost,
+        'pgCost': pg_cost,
         'rtosEnergy': rtos_energy,
         'pgEnergy': pg_energy,
     }
@@ -99,7 +103,7 @@ def parse_sql_query(sql_query):
 
     # Create the JSON object
     json_object = {
-        "query": "sql_query",
+        "query": sql_query,
         "table": [],
         "selection": [],
         "projection": [],

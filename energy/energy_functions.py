@@ -123,7 +123,7 @@ def get_query_exec_energy(query, force_order):
     (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
 
 
-    return (power, exec_time, energy)
+    return energy
 
 def get_query_plan_energy(query, force_order):
     conn, cursor = connect_bdd("imdbload")

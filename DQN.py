@@ -259,7 +259,7 @@ class DQN:
                 env.takeAction(left,right)
 
                 startTime = time.time()
-                reward, done = env.reward_new()
+                reward, done, rtos_cost , sql_rtos = env.reward_new()
                 thisTime = time.time() -startTime
                 lalias = len(env.sel.from_table_list)
                 if done:
@@ -298,7 +298,7 @@ class DQN:
                 right = chosen_action[1]
                 env.takeAction(left,right)
 
-                reward, done = env.reward_new()
+                reward, done, rtos_cost , rtos_sql = env.reward_new()
                 if done:
                     rewards.append(reward)
                     break

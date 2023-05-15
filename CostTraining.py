@@ -201,12 +201,13 @@ def train(trainSet, validateSet):
     print_every = 20
     TARGET_UPDATE = 3
     save_every = 200
-    for i_episode in range(0, 10):
+    for i_episode in range(0, 10000):
         print("Reched episode: ", i_episode)
         if i_episode % 200 == 100:
             trainSet = resample_sql(trainSet_temp)
         #     sql = random.sample(train_list_back,1)[0][0]
         sqlt = random.sample(trainSet[0:], 1)[0]
+        print("I am here with sqlt : ", sqlt.filename)
 
         # save query to query_house
         query_id = create_query(sqlt.sql)
@@ -254,7 +255,9 @@ def train(trainSet, validateSet):
                 pg_energy = get_query_exec_energy(new_query, False)
                 print("pg_energy ", pg_energy)
 
-                update_query_join_order(query_id, action_this_epi, rtos_exec_time, pg_exec_time,rtos_energy, pg_energy)
+                filename = sqlt.filename.replace("workload/job-queries/", "")
+                print(filename)
+                update_query_join_order(filename, i_episode,query_id, action_this_epi, rtos_exec_time, pg_exec_time,rtos_energy, pg_energy, rtos_cost, pg_cost)
                 reward = log(reward + 1)
                 if reward > config.maxR:
                     reward = config.maxR
