@@ -1,3 +1,5 @@
+import re
+
 import psycopg2
 from yoctopuce.yocto_power import *
 from datetime import datetime, timedelta
@@ -101,70 +103,63 @@ def get_query_exec_energy(query, force_order):
     datalog = psensor.get_dataLogger()
     datalog.set_timeUTC(time.time())
     startDataRecording(psensor)  # Power Meter starts recording power per second
-    time.sleep(2.0)
+    time.sleep(2)
     print("4 - is recording: ", psensor.get_dataLogger().get_recording())
 
     # execute query
     cursor.callproc('getQueryExecutionInfo', (query,))
+
     endExecTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f")
 
     result = cursor.fetchone()
+
     result = result[0].split(";")
     (startTime, executionPlan, endTime) = (result[0].replace(".", ":"), result[1], endExecTime)
 
-    # print("4-4 - is recording: ", psensor.get_dataLogger().get_recording())
-    print("startTime: ", startTime, " - endTime: ", endTime)
-    # YAPI.Sleep(2000)
-    time.sleep(2.0)
-    print("stop recording : ", datetime.now())
+    # Regular expressions patterns
+    cost_pattern = r"cost=(\d+\.\d+)"
+    time_pattern = r"actual time=(\d+\.\d+)\.\.(\d+\.\d+)"
+
+    # Extract cost value
+    cost_match = re.search(cost_pattern, executionPlan)
+    if cost_match:
+        estimated_query_cost = float(cost_match.group(1))
+        print("Cost:", estimated_query_cost)
+    else:
+        print("Cost value not found")
+
+    # Extract actual time value
+    time_match = re.search(time_pattern, executionPlan)
+    if time_match:
+        actual_query_time = float(time_match.group(1))
+        print("Actual Time :", actual_query_time)
+    else:
+        print("Actual Time value not found")
+
+    time.sleep(2)
     stopDataRecording(psensor)
-    print("7 - is recording: ", psensor.get_dataLogger().get_recording())
 
     (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
 
 
-    return energy
+    return energy , actual_query_time ,estimated_query_cost
 
-def get_query_plan_energy(query, force_order):
+def get_query_plan_json(query, force_order):
     conn, cursor = connect_bdd("imdbload")
 
     # Prepare query
     join_collapse_limit = "SET join_collapse_limit ="
     join_collapse_limit += "1" if force_order else "8"
-    query = join_collapse_limit + "; EXPLAIN " + query + ";"
-
-    # Prepare sensor
-    psensor = findPowerSensor("YWATTMK1-1F6860.power")
-    stopDataRecording(psensor)
-    clearPowerMeterCache(psensor)
-    tm = time.time()
-    datalog = psensor.get_dataLogger()
-    datalog.set_timeUTC(time.time())
-    startDataRecording(psensor)  # Power Meter starts recording power per second
-    time.sleep(2.0)
-    print("4 - is recording: ", psensor.get_dataLogger().get_recording())
-
-    # execute query
-    cursor.callproc('getQueryExecutionInfo', (query,))
-    endExecTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f")
-
-    result = cursor.fetchone()
-    result = result[0].split(";")
-    (startTime, executionPlan, endTime) = (result[0].replace(".", ":"), result[1], endExecTime)
-
-    # print("4-4 - is recording: ", psensor.get_dataLogger().get_recording())
-    print("startTime: ", startTime, " - endTime: ", endTime)
-    # YAPI.Sleep(2000)
-    time.sleep(2.0)
-    print("stop recording : ", datetime.now())
-    stopDataRecording(psensor)
-    print("7 - is recording: ", psensor.get_dataLogger().get_recording())
-
-    (power, exec_time, energy) = getAveragePower(psensor, startTime, endTime)
 
 
-    return (power, exec_time, energy)
+    query = join_collapse_limit + "; EXPLAIN (COSTS, FORMAT JSON, ANALYSE) " + query + ";"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    real_plan_json = rows[0][0][0]
 
+    print(real_plan_json)
+
+    return real_plan_json
 
 
 

@@ -1,4 +1,5 @@
 import json
+import os
 import re
 
 import moz_sql_parser
@@ -54,7 +55,7 @@ def get_attribute_id(attribute_name, table_name):
         return None
 
 
-def update_query_join_order(filename, episode,query_id, join_order, rtos_exec_time, pg_exec_time, rtos_energy, pg_energy, rtos_cost, pg_cost):
+def update_query_join_order(filename, episode,query_id, join_order, rtos_exec_time, pg_exec_time, rtos_energy, pg_energy, rtos_cost, pg_cost, rtos_json_plan, pg_json_plan):
     url = f'{BASE_URL}/queries/updateJoinOrder'
     data = {
         'queryId': query_id,
@@ -67,6 +68,9 @@ def update_query_join_order(filename, episode,query_id, join_order, rtos_exec_ti
         'pgCost': pg_cost,
         'rtosEnergy': rtos_energy,
         'pgEnergy': pg_energy,
+        'rtosJsonPlan': rtos_json_plan,
+        'pgJsonPlan': pg_json_plan,
+
     }
     response = requests.put(url, data=json.dumps(data), headers=headers)
 
@@ -125,6 +129,7 @@ def parse_sql_query(sql_query):
             value['alias'] = ''
         json_object['projection'].append(value)
 
+
     # Add joins to the JSON object
     joins, selection_conditions = get_join_conditions(parsed_query)
     json_object['join'] = joins
@@ -139,9 +144,30 @@ def parse_sql_query(sql_query):
 def get_query_projections(parsed_select):
     projection_aliases = []
     projections = []
-    if len(parsed_select) > 2:
-        for column in parsed_select:
-            projection = {}
+    for column in parsed_select:
+        projection = {}
+        if(isinstance(column, str)):
+            key_list = list(parsed_select['value'].keys())
+            key = key_list[0]
+            if(key == 'count'):
+                projection['all'] = True
+                projection['aggregation'] = ''
+                projection['projection'] = f"{key} (*)"
+                projection['attribute_id'] = ''
+                projections.append(projection)
+                projection_aliases.append('')
+
+            else:
+                projection['all'] = False
+                projection['aggregation'] = key
+                projection['projection'] = f"{key} ({parsed_select['value'][key]})"
+                projection['attribute_id'] = get_attribute_id(parsed_select['value'][key].split('.')[1],
+                                                              alias_name_2_table_name[parsed_select['value'][key].split('.')[0]])
+                projections.append(projection)
+                projection_aliases.append(parsed_select['name'])
+                break;
+
+        else:
             for prop, value in column.items():
                 if isinstance(value, dict):
                     key_list = list(value.keys())
@@ -152,31 +178,11 @@ def get_query_projections(parsed_select):
                     projection['attribute_id'] = get_attribute_id(value[key].split('.')[1],
                                                                   alias_name_2_table_name[value[key].split('.')[0]])
                     projections.append(projection)
+
                 if isinstance(value, str):
                     projection_aliases.append(value)
-    else:
-        if not isinstance(parsed_select, list):
-            parsed_select = parsed_select.items()
-        for prop, value in parsed_select:
-            projection = {}
-            if isinstance(value, dict):
-                key_list = list(value.keys())
-                key = key_list[0]
 
-                if key == 'count':
-                    projection['all'] = True
-                    projection['aggregation'] = key
-                    projection['projection'] = f"{key}(*)"
-                    projection['attribute_id'] = None
-                else:
-                    projection['all'] = False
-                    projection['aggregation'] = key
-                    projection['projection'] = f"{key} ({value[key]})"
-                    projection['attribute_id'] = get_attribute_id(value[key].split('.')[1],
-                                                                  alias_name_2_table_name[value[key].split('.')[0]])
-                projections.append(projection)
-            if isinstance(value, str):
-                projection_aliases.append(value)
+
     return projections, projection_aliases
 
 
@@ -226,7 +232,7 @@ def get_selections(parsed_query, selection_conditions):
     where_clause = where_clause.replace("<>", "!=")
 
     # Define a regular expression pattern to extract the attribute name and comparison operator
-    pattern = r'(?P<attribute>\w+\.\w+)\s+(?P<operator>=|!=|>|<|LIKE|NOT LIKE|IN|NOT IN|BETWEEN)\s+(?P<value>\'.*?\'|\(.*?\)|\d+)'
+    pattern = r'(?P<attribute>\w+\.\w+)\s+(?P<operator>=|!=|>|>=|<=|<|LIKE|like|NOT LIKE|not like|IN|in|NOT IN|BETWEEN)\s+(?P<value>\'.*?\'|\(.*?\)|\d+)'
 
     # Split the WHERE clause statement into individual selection statements
     selection_statements = re.split(r'\s+(?:AND)\s+', where_clause.replace('WHERE', ''), flags=re.IGNORECASE)
@@ -265,14 +271,25 @@ def get_selections(parsed_query, selection_conditions):
                 'attribute_id': attribute_id,
                 'operators': operators
             })
-            return selection
+    return selection
 
 
 if __name__ == '__main__':
-    query = "SELECT MIN(mc.note) AS production_note, MIN(t.title) AS movie_title, MIN(t.production_year) AS movie_year FROM company_type AS ct, info_type AS it, movie_companies AS mc, movie_info_idx AS mi_idx, title AS t WHERE ct.kind = 'production companies' AND it.info = 'top 250 rank' AND mc.note NOT LIKE '%(as Metro-Goldwyn-Mayer Pictures)%' AND (mc.note LIKE '%(co-production)%' OR mc.note LIKE '%(presents)%') AND ct.id = mc.company_type_id AND t.id = mc.movie_id AND t.id = mi_idx.movie_id AND mc.movie_id = mi_idx.movie_id AND it.id = mi_idx.info_type_id;"
-    result = parse_sql_query(query)
+    directory_path = "../workload/api_test_queries/"
+    # Loop over all the files in the directory
+    for filename in os.listdir(directory_path):
+        # Check if the file is a file and not a directory
+        if os.path.isfile(os.path.join(directory_path, filename)) :
 
-    # Convert the selection list to a JSON array
-    query_json = json.dumps(result, indent=4)
+            # Open the file for reading
+            with open(os.path.join(directory_path, filename), 'r') as file:
+                # Read the contents of the file
+                query = file.read()
+                print(f'--------------------------------------------{filename}-------------------------------------------------------')
 
-    print(query_json)
+                result = parse_sql_query(query)
+
+                # Convert the selection list to a JSON array
+                query_json = json.dumps(result, indent=4)
+
+                print(query_json)

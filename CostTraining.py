@@ -216,9 +216,7 @@ def train(trainSet, validateSet):
         saved_query_ids.append(query_id)
         print("saved_query_ids: ", saved_query_ids)
 
-        pg_cost = sqlt.getDPlantecy()
         env = ENV(sqlt, db_info, pgrunner, device)
-        print("pg_cost ", pg_cost)
 
         previous_state_list = []
         action_this_epi = []
@@ -245,19 +243,14 @@ def train(trainSet, validateSet):
             previous_state_list.append((value_now, next_value.view(-1, 1), env_now))
             if done:
                 sqlt.updateBestOrder(reward, action_this_epi)
-                print("rtos_cost ", rtos_cost)
-                rtos_exec_time = get_query_latency(new_query, True)
-                print("rtos_exec_time ", rtos_exec_time)
-                pg_exec_time = get_query_latency(new_query, False)
-                print("pg_exec_time ", pg_exec_time)
-                rtos_energy = get_query_exec_energy(new_query, True)
-                print("rtos_energy ", pg_exec_time)
-                pg_energy = get_query_exec_energy(new_query, False)
-                print("pg_energy ", pg_energy)
+                rtos_json_plan = get_query_plan_json(new_query, True)
+                pg_json_plan =  get_query_plan_json(sqlt.sql, False)
+                rtos_energy, rtos_exec_time, rtos_cost = get_query_exec_energy(new_query, True)
+                pg_energy , pg_exec_time, pg_cost= get_query_exec_energy(sqlt.sql, False)
 
-                filename = sqlt.filename.replace("workload/job-queries/", "")
+                filename = sqlt.filename.replace("workload/api_test_queries/", "")
                 print(filename)
-                update_query_join_order(filename, i_episode,query_id, action_this_epi, rtos_exec_time, pg_exec_time,rtos_energy, pg_energy, rtos_cost, pg_cost)
+                update_query_join_order(filename, i_episode,query_id, action_this_epi, rtos_exec_time, pg_exec_time,rtos_energy, pg_energy, rtos_cost, pg_cost, rtos_json_plan, pg_json_plan)
                 reward = log(reward + 1)
                 if reward > config.maxR:
                     reward = config.maxR
